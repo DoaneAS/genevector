@@ -46,8 +46,8 @@ class GeneVectorModel(nn.Module):
             nn.init.orthogonal_(self.wi.weight, gain=gain)
             nn.init.orthogonal_(self.wj.weight, gain=gain)
         else:
-            self.wi.weight.data.uniform_(-1,1)
-            self.wj.weight.data.uniform_(-1,1)
+            self.wi.weight.data.uniform_(-1*gain,gain)
+            self.wj.weight.data.uniform_(-1*gain,gain)
 
     def forward(self, i_indices, j_indices):
         w_i = self.wi(i_indices)
@@ -83,13 +83,13 @@ class GeneVector(object):
     :param device: Sets Torch device ("cpu", "cuda:0", "mps")
     :type device: str
     """
-    def __init__(self, dataset, output_file, emb_dimension=100, batch_size=None, gain=1, c=100., device="cpu", init_ortho=False):
+    def __init__(self, dataset, output_file, emb_dimension=100, batch_size=None, gain=1, device="cpu", init_ortho=True, compute_mi=False):
         """
         Constructor method
         """
         self.dataset = dataset
         self.init_ortho = init_ortho
-        self.dataset.create_inputs_outputs(c=c)
+        self.dataset.create_inputs_outputs(compute_mi=compute_mi)
         self.output_file_name = output_file
         self.emb_size = len(self.dataset.data.gene2id)
         self.emb_dimension = emb_dimension
@@ -112,8 +112,7 @@ class GeneVector(object):
         self.loss_values = list()
         self.mean_loss_values = []
 
-
-    def train(self, epochs, threshold=None, update_interval=20, alpha=0.0, beta=0.0):
+    def train(self, epochs, threshold=None, update_interval=20, alpha=0.01, beta=0.01):
         """
         Trains the model for the specified number of epochs or until the loss falls below the threshold.
 
