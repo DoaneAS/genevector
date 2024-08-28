@@ -151,6 +151,7 @@ class GeneVectorDataset(Dataset):
         self.mi_scores = mi_scores
         self.signed_mi = signed_mi
 
+
     @staticmethod
     def get_gene_entropy(adata):
         """
@@ -313,7 +314,7 @@ class GeneVectorDataset(Dataset):
 
         if self.mi_scores == None:
             self.generate_mi_scores()
-            
+
             if self.signed_mi:
                 print("...Directional MI....")
                 correlation_matrix = self.adata.to_df().corr()
@@ -362,23 +363,51 @@ class GeneVectorDataset(Dataset):
                 else:
                     self._xij.append(0.)
 
+        self._n_xij = len(self._xij)
+
         if self.device == "cuda":
-            self._i_idx = torch.cuda.LongTensor(self._i_idx).cuda()
-            self._j_idx = torch.cuda.LongTensor(self._j_idx).cuda()
-            self._xij = torch.cuda.FloatTensor(self._xij).cuda()
-            self._ent = torch.FloatTensor(ent).cuda()
+            self._i_idx = torch.cuda.LongTensor(self._i_idx)
+            self._j_idx = torch.cuda.LongTensor(self._j_idx)
+            self._xij   = torch.cuda.FloatTensor(self._xij)
+            self._ent   = torch.cuda.FloatTensor(ent)
         else:
             self._i_idx = torch.LongTensor(self._i_idx).to(self.device)
             self._j_idx = torch.LongTensor(self._j_idx).to(self.device)
             self._xij = torch.FloatTensor(self._xij).to(self.device)
             self._ent = torch.FloatTensor(ent).to(self.device)
         print(bcolors.OKCYAN + "Ready to train." + bcolors.ENDC)
-    
-    def get_batches(self, batch_size):
+
+    def __len__(self):
+        #return self._n_xij
+        return self.num_pairs
+
+#    def get_batches(self, batch_size):
+#        if self.device == "cuda":
+#            rand_ids = torch.LongTensor(np.random.choice(len(self._xij), len(self._xij), replace=False))
+#        else:
+#            rand_ids = torch.LongTensor(np.random.choice(len(self._xij), len(self._xij), replace=False))
+#        for p in range(int(0), int(len(rand_ids)), int(batch_size)):
+#            batch_ids = rand_ids[p:p+batch_size]
+#            yield self._xij[batch_ids], self._i_idx[batch_ids], self._j_idx[batch_ids]
+
+
+    def get_tbatches(self, batch_size):
         if self.device == "cuda":
-            rand_ids = torch.cuda.LongTensor(np.random.choice(len(self._xij), len(self._xij), replace=False))
+            x = batch_sample(self._xij)
+            rand_ids = torch.LongTensor(np.random.choice(len(self._xij), len(self._xij), replace=False))
         else:
             rand_ids = torch.LongTensor(np.random.choice(len(self._xij), len(self._xij), replace=False))
-        for p in range(0, len(rand_ids), batch_size):
+        for p in range(int(0), int(len(rand_ids)), int(batch_size)):
             batch_ids = rand_ids[p:p+batch_size]
             yield self._xij[batch_ids], self._i_idx[batch_ids], self._j_idx[batch_ids]
+
+    def __getitem__(self, ids):
+        return self._xij[ids], self._i_idx[ids], self._j_idx[ids]
+
+    def get_batches(self, batch_size):
+        self.train_dataloader = DataLoader(self, batch_size=batch_size, shuffle=True, drop_last=False)
+        return train_dataloader
+
+
+
+

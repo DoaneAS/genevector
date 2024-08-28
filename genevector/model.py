@@ -96,9 +96,9 @@ class GeneVector(object):
         if batch_size == None and self.dataset.num_pairs:
             self.batch_size = self.dataset.num_pairs
         elif batch_size != None:
-            self.batch_size = batch_size
+            self.batch_size = int(batch_size)
         else:
-            self.batch_size = 1e6
+            self.batch_size = int(1e6)
         self.use_cuda = torch.cuda.is_available()
         self.model = GeneVectorModel(self.emb_size, self.emb_dimension, gain=gain, init_ortho=init_ortho)
         self.device = device
@@ -129,9 +129,17 @@ class GeneVector(object):
         :type beta: float
         """
         last_loss = 0.
+        #training_set = self.dataset
+        params = {'batch_size': self.batch_size,
+                  'shuffle': True}
+
+        training_generator = torch.utils.data.DataLoader(self.dataset, **params)
+
         for _ in range(1, epochs+1):
             batch_i = 0
-            for x_ij, i_idx, j_idx in self.dataset.get_batches(self.batch_size):
+            for x_ij, i_idx, j_idx in training_generator:
+                x_ij, i_idx, j_idx = x_ij.to(self.device), i_idx.to(self.device), j_idx.to(self.device)
+         #   for x_ij, i_idx, j_idx in self.dataset.get_batches(self.batch_size):
                 batch_i += 1
 
                 outputs = self.model(i_idx, j_idx)
